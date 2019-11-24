@@ -10,12 +10,24 @@ import xml.etree.ElementTree as ET
 
 _LOGGER = logging.getLogger(__name__)
 
-MAPPER_STATES = {
-    "0": "Not connected",
-    "1": "Waiting",
-    "2": "Normal",
-    "3": "Error",
-    "4": "Upgrading",
+MESSAGES_STATES = {
+    "0": "Error",
+    "1": "Warnings",
+}
+
+OUTPUTMODE_STATES = {
+    "0": "MPP",
+    "1": "DC current limitation",
+    "2": "AC current limitation",
+    "3": "AC output limitation",
+    "4": "Temperature limitation",
+}
+
+OPERATINGMODE_STATES = {
+    "0": "Start",
+    "1": "Feed",
+    "2": "Night",
+    "3": "Test active",
 }
 
 URL_PATH = "/data/inverter.txt"
@@ -45,18 +57,19 @@ class Sensors(object):
         self.add(
             (
                 Sensor("p-ac", 11, 23, "", "current_power", "W"),
-                Sensor("c-grid", 11, 23, "", "grid-current", "A"),
-                Sensor("c-generator", 11, 23, "", "generator-current", "A"),
-                Sensor("v-grid", 11, 23, "", "grid-voltage", "V"),
-                Sensor("v-generator", 11, 23, "", "generator-voltage", "V"),
+                Sensor("c-grid", 11, 23, "", "grid_current", "A"),
+                Sensor("c-generator", 11, 23, "", "generator_current", "A"),
+                Sensor("v-grid", 11, 23, "", "grid_voltage", "V"),
+                Sensor("v-generator", 11, 23, "", "generator_voltage", "V"),
                 Sensor("temp", 20, 32, "/10", "temperature", "°C"),
                 
                 Sensor("e-today", 3, 3, "/100", "today_yield", "kWh", True),
                 Sensor("e-Month", 3, 3, "/100", "month_yield", "kWh", True),
                 Sensor("e-year", 3, 3, "/100", "year_yield", "kWh", True),         
-                Sensor("e-total", 1, 1, "/100", "total_yield", "kWh", False,
-                       True),
-                Sensor("state", 22, 34, "", "state")
+                Sensor("e-total", 1, 1, "/100", "total_yield", "kWh", False,True),
+                Sensor("s-Message", 22, 34, "", "state_Message")
+                Sensor("s-OutMode", 22, 34, "", "state_OutputMode")
+                Sensor("s-OpMode", 22, 34, "", "state_OperatingMode")
             )
         )
 
@@ -92,7 +105,7 @@ class Sensors(object):
             return
 
         if not isinstance(sensor, Sensor):
-            raise TypeError("pysaj.Sensor expected")
+            raise TypeError("pysunways.Sensor expected")
 
         if sensor.name in self:
             old = self[sensor.name]
@@ -100,105 +113,92 @@ class Sensors(object):
             _LOGGER.warning("Replacing sensor %s with %s", old, sensor)
 
         if sensor.key in self:
-            _LOGGER.warning("Duplicate SAJ sensor key %s", sensor.key)
+            _LOGGER.warning("Duplicate Sunways sensor key %s", sensor.key)
 
         self.__s.append(sensor)
 
 
-class SAJ(object):
-    """Provides access to SAJ inverter data"""
+class Sunways(object):
+    """Provides access to Sunways inverter data"""
 
-    def __init__(self, host, wifi=False, username='admin', password='admin'):
+    def __init__(self, host, username='customer', password='********'):
         self.host = host
-        self.wifi = wifi
         self.username = username
         self.password = password
         self.serialnumber = "XXXXXXXXXXXXXXXXX"
 
         self.url = "http://{0}/".format(self.host)
-        if self.wifi:
-            if (len(self.username) > 0
-               and len(self.password) > 0):
-                self.url = "http://{0}:{1}@{2}/".format(self.username,
-                                                        self.password,
-                                                        self.host)
-                self.url_info = self.url + URL_PATH_WIFI_INFO
-                self.url += URL_PATH_WIFI
-        else:
-            self.url_info = self.url + URL_PATH_ETHERNET_INFO
-            self.url += URL_PATH_ETHERNET
+        self.url += URL_PATH
 
     async def read(self, sensors):
-        """Returns necessary sensors from SAJ inverter"""
+        """Returns necessary sensors from Sunways inverter"""
 
         try:
             timeout = aiohttp.ClientTimeout(total=5)
             async with aiohttp.ClientSession(timeout=timeout,
                                              raise_for_status=True) as session:
-                current_url = self.url_info
-                async with session.get(current_url) as response:
-                    data = await response.text()
+ ******************* auth = aiohttp.auth.DigestAuth(self.username,self.password,?????client?????)
+#https://github.com/aio-libs/aiohttp/pull/2213
 
-                    if self.wifi:
-                        csv_data = StringIO(data)
-                        reader = csv.reader(csv_data)
-
-                        for row in reader:
-                            self.serialnumber = row.pop(0)
-                    else:
-                        xml = ET.fromstring(data)
-
-                        find = xml.find("SN")
-                        if find is not None:
-                            self.serialnumber = find.text
-
-                    _LOGGER.debug("Inverter SN: %s", self.serialnumber)
-
+               
                 current_url = self.url
                 async with session.get(current_url) as response:
                     data = await response.text()
 
-                    if self.wifi:
-                        csv_data = StringIO(data)
-                        reader = csv.reader(csv_data)
-                        ncol = len(next(reader))
-                        csv_data.seek(0)
+                    #data="0.04 kW#0.2#226.3#0.1#350.3#---#---#10.42#138.2#2010.7#16147.1#4#0#0#0#"
+                    #if len(data.split(#)) > 15 :
+power, netCurrent, netVoltage, genCurrent, genVoltage,Temperature,irradiation,dayEnergy,monthEnergy,yearEnergy,totalEnergy,val1,val2,val3,val4,val5= data.split('#')
 
-                        values = []
+                   # csv_data = StringIO(data)
+                    #reader = csv.reader(csv_data)
+                    #ncol = len(next(reader))
+                    #csv_data.seek(0)
 
-                        for row in reader:
-                            for (i, v) in enumerate(row):
-                                values.append(v)
+                    #values = []
 
-                        for sen in sensors:
-                            if ncol < 24:
-                                if sen.csv_1_key != -1:
-                                    v = values[sen.csv_1_key]
-                                else:
-                                    v = None
-                            else:
-                                if sen.csv_2_key != -1:
-                                    v = values[sen.csv_2_key]
-                                else:
-                                    v = None
+                    #for row in reader:
+                    #    for (i, v) in enumerate(row):
+                    #        values.append(v)
 
-                            if v is not None:
-                                if sen.name == "state":
-                                    sen.value = MAPPER_STATES[v]
-                                else:
-                                    sen.value = eval(
-                                        "{0}{1}".format(v, sen.factor)
-                                    )
-                                sen.date = date.today()
-                    else:
-                        xml = ET.fromstring(data)
-
-                        for sen in sensors:
-                            find = xml.find(sen.key)
-                            if find is None:
-                                raise KeyError
-                            sen.value = find.text
-                            sen.date = date.today()
+                    for sen in sensors:
+                        if sen.name == "current_power":
+                            sen.value = eval(
+                                "{0}{1}".format(power[:-2], sen.factor)
+                            )
+                        if sen.name == "grid_current":
+                            sen.value = eval(
+                                "{0}{1}".format(netCurrent, sen.factor)
+                            )      
+                        if sen.name == "generator_current":
+                            sen.value = eval(
+                                "{0}{1}".format(genCurrent, sen.factor)
+                            )      
+                        if sen.name == "grid_voltage":
+                            sen.value = eval(
+                                "{0}{1}".format(netVoltage, sen.factor)
+                            )      
+                        if sen.name == "generator_voltage":
+                            sen.value = eval(
+                                "{0}{1}".format(genVoltage, sen.factor)
+                            )      
+                        if sen.name == "grid_current":
+                            sen.value = eval(
+                                "{0}{1}".format(netCurrent, sen.factor)
+                            )      
+                        if sen.name == "grid_current":
+                            sen.value = eval(
+                                "{0}{1}".format(netCurrent, sen.factor)
+                            )      
+                        if sen.name == "grid_current":
+                            sen.value = eval(
+                                "{0}{1}".format(netCurrent, sen.factor)
+                            )      
+                            
+                        if sen.name == "state":
+                            sen.value = MAPPER_STATES[v]
+               
+                        sen.date = date.today()
+                   
 
                     _LOGGER.debug("Got new value for sensor %s: %s",
                                   sen.name, sen.value)
@@ -207,10 +207,10 @@ class SAJ(object):
         except (aiohttp.client_exceptions.ClientConnectorError,
                 concurrent.futures._base.TimeoutError):
             # Connection to inverter not possible.
-            # This can be "normal" - so warning instead of error - as SAJ
-            # inverters are powered by DC and thus have no power after the sun
+            # This can be "normal" - so warning instead of error - as Sunways
+            # inverters auto switch off after the sun
             # has set.
-            _LOGGER.warning("Connection to SAJ inverter is not possible. " +
+            _LOGGER.warning("Connection to Sunways inverter is not possible. " +
                             "The inverter may be offline due to darkness. " +
                             "Otherwise check host/ip address.")
             return False
@@ -226,23 +226,11 @@ class SAJ(object):
                 str.format("No valid CSV received from {0} at {1}", self.host,
                            current_url)
             )
-        except ET.ParseError:
-            # XML is not valid or even no XML at all
-            raise UnexpectedResponseException(
-                str.format("No valid XML received from {0} at {1}", self.host,
-                           current_url)
-            )
-        except KeyError:
-            # XML received does not have all the required elements
-            raise UnexpectedResponseException(
-                str.format("SAJ sensor key {0} not found, inverter not " +
-                           "compatible?", sen.key)
-            )
         except IndexError:
             # CSV received does not have all the required elements
             raise UnexpectedResponseException(
                 str.format(
-                    "SAJ sensor name {0} at CSV position {1} not found, " +
+                    "Sunways sensor name {0} at CSV position {1} not found, " +
                     "inverter not compatible?",
                     sen.name,
                     sen.csv_1_key if ncol < 24 else sen.csv_2_key
