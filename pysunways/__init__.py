@@ -10,6 +10,14 @@ import xml.etree.ElementTree as ET
 
 _LOGGER = logging.getLogger(__name__)
 
+INVERTER_MODEL = {
+    "0": "AT2700",
+    "1": "AT3600",
+    "2": "AT4500",
+    "3": "AT5000",
+    "7": "AT3000",
+}
+
 MESSAGES_STATES = {
     "0": "Error",
     "1": "Warnings",
@@ -181,17 +189,25 @@ power, netCurrent, netVoltage, genCurrent, genVoltage,Temperature,irradiation,da
                             sen.value = eval(
                                 "{0}{1}".format(genVoltage, sen.factor)
                             )      
-                        if sen.name == "grid_current":
+                        if sen.name == "temperature":
                             sen.value = eval(
-                                "{0}{1}".format(netCurrent, sen.factor)
+                                "{0}{1}".format(Temperature, sen.factor)
                             )      
-                        if sen.name == "grid_current":
+                        if sen.name == "today_yield":
                             sen.value = eval(
-                                "{0}{1}".format(netCurrent, sen.factor)
+                                "{0}{1}".format(dayEnergy, sen.factor)
                             )      
-                        if sen.name == "grid_current":
+                        if sen.name == "month_yield":
                             sen.value = eval(
-                                "{0}{1}".format(netCurrent, sen.factor)
+                                "{0}{1}".format(monthEnergy, sen.factor)
+                            )      
+                        if sen.name == "year_yield":
+                            sen.value = eval(
+                                "{0}{1}".format(yearEnergy, sen.factor)
+                            )      
+                        if sen.name == "total_yield":
+                            sen.value = eval(
+                                "{0}{1}".format(totalEnergy, sen.factor)
                             )      
                             
                         if sen.name == "state":
