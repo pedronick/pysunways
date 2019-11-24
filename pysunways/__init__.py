@@ -1,4 +1,4 @@
-"""PySAJ interacts as a library to communicate with SAJ inverters"""
+"""PySunways interacts as a library to communicate with Sunways inverters"""
 import aiohttp
 import asyncio
 import concurrent
@@ -18,11 +18,7 @@ MAPPER_STATES = {
     "4": "Upgrading",
 }
 
-URL_PATH_ETHERNET = "real_time_data.xml"
-URL_PATH_ETHERNET_INFO = "equipment_data.xml"
-URL_PATH_WIFI = "status/status.php"
-URL_PATH_WIFI_INFO = "info.php"
-
+URL_PATH = "/data/inverter.txt"
 
 class Sensor(object):
     """Sensor definition"""
@@ -42,28 +38,28 @@ class Sensor(object):
 
 
 class Sensors(object):
-    """SAJ sensors"""
+    """Sunways sensors"""
 
-    def __init__(self, wifi=False):
+    def __init__(self):
         self.__s = []
         self.add(
             (
                 Sensor("p-ac", 11, 23, "", "current_power", "W"),
+                Sensor("c-grid", 11, 23, "", "grid-current", "A"),
+                Sensor("c-generator", 11, 23, "", "generator-current", "A"),
+                Sensor("v-grid", 11, 23, "", "grid-voltage", "V"),
+                Sensor("v-generator", 11, 23, "", "generator-voltage", "V"),
+                Sensor("temp", 20, 32, "/10", "temperature", "°C"),
+                
                 Sensor("e-today", 3, 3, "/100", "today_yield", "kWh", True),
+                Sensor("e-Month", 3, 3, "/100", "month_yield", "kWh", True),
+                Sensor("e-year", 3, 3, "/100", "year_yield", "kWh", True),         
                 Sensor("e-total", 1, 1, "/100", "total_yield", "kWh", False,
                        True),
-                Sensor("t-today", 4, 4, "/10", "today_time", "h", True),
-                Sensor("t-total", 2, 2, "/10", "total_time", "h", False, True),
-                Sensor("CO2", 21, 33, "/10", "total_co2_reduced", "kg", False,
-                       True),
-                Sensor("temp", 20, 32, "/10", "temperature", "°C"),
                 Sensor("state", 22, 34, "", "state")
             )
         )
-        if not wifi:
-            self.add(
-                Sensor("maxPower", -1, -1, "", "today_max_current", "W", True)
-            )
+
 
     def __len__(self):
         """Length."""
