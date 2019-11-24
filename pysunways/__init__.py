@@ -145,17 +145,18 @@ class Sunways(object):
             timeout = aiohttp.ClientTimeout(total=5)
             async with aiohttp.ClientSession(timeout=timeout,
                                              raise_for_status=True) as session:
- ******************* auth = aiohttp.auth.DigestAuth(self.username,self.password,?????client?????)
-#https://github.com/aio-libs/aiohttp/pull/2213
-
-               
+                auth = aiohttp.auth.DigestAuth(self.username,self.password,session)
+                #https://github.com/aio-libs/aiohttp/pull/2213
+                #https://https://github.com/aio-libs/aiohttp/pull/2213/files/26a6064e3e742b84e64a51cd9df3f03cca5466aa
+                #riga 1481
+                
                 current_url = self.url
-                async with session.get(current_url) as response:
+                async with auth.get(current_url) as response:
                     data = await response.text()
 
                     #data="0.04 kW#0.2#226.3#0.1#350.3#---#---#10.42#138.2#2010.7#16147.1#4#0#0#0#"
                     #if len(data.split(#)) > 15 :
-power, netCurrent, netVoltage, genCurrent, genVoltage,Temperature,irradiation,dayEnergy,monthEnergy,yearEnergy,totalEnergy,val1,val2,val3,val4,val5= data.split('#')
+                    power, netCurrent, netVoltage, genCurrent, genVoltage,Temperature,irradiation,dayEnergy,monthEnergy,yearEnergy,totalEnergy,val1,val2,val3,val4,val5= data.split('#')
 
                    # csv_data = StringIO(data)
                     #reader = csv.reader(csv_data)
