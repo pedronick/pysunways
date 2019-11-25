@@ -6,7 +6,10 @@ import csv
 from io import StringIO
 from datetime import date
 import logging
+import requests
 import xml.etree.ElementTree as ET
+
+from pip._vendor import requests
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -40,6 +43,7 @@ OPERATINGMODE_STATES = {
 
 URL_PATH = "/data/inverter.txt"
 
+
 class Sensor(object):
     """Sensor definition"""
 
@@ -64,23 +68,22 @@ class Sensors(object):
         self.__s = []
         self.add(
             (
-                Sensor("p-ac", 11, 23, "", "current_power", "W"),
-                Sensor("c-grid", 11, 23, "", "grid_current", "A"),
-                Sensor("c-generator", 11, 23, "", "generator_current", "A"),
-                Sensor("v-grid", 11, 23, "", "grid_voltage", "V"),
-                Sensor("v-generator", 11, 23, "", "generator_voltage", "V"),
-                Sensor("temp", 20, 32, "/10", "temperature", "°C"),
-                
-                Sensor("e-today", 3, 3, "/100", "today_yield", "kWh", True),
-                Sensor("e-Month", 3, 3, "/100", "month_yield", "kWh", True),
-                Sensor("e-year", 3, 3, "/100", "year_yield", "kWh", True),         
-                Sensor("e-total", 1, 1, "/100", "total_yield", "kWh", False,True),
-                Sensor("s-Message", 22, 34, "", "state_Message")
-                Sensor("s-OutMode", 22, 34, "", "state_OutputMode")
-                Sensor("s-OpMode", 22, 34, "", "state_OperatingMode")
+                Sensor("p-ac", 11, 23, "", "current_power", "W")
+                , Sensor("c-grid", 11, 23, "", "grid_current", "A")
+                , Sensor("c-generator", 11, 23, "", "generator_current", "A")
+                , Sensor("v-grid", 11, 23, "", "grid_voltage", "V")
+                , Sensor("v-generator", 11, 23, "", "generator_voltage", "V")
+                , Sensor("temp", 20, 32, "/10", "temperature", "°C")
+
+                # ,Sensor("e-today", 3, 3, "/100", "today_yield", "kWh", True)
+                # ,Sensor("e-Month", 3, 3, "/100", "month_yield", "kWh", True)
+                # ,Sensor("e-year", 3, 3, "/100", "year_yield", "kWh", True)
+                # ,Sensor("e-total", 1, 1, "/100", "total_yield", "kWh", False,True)
+                # ,Sensor("s-Message", 22, 34, "", "state_Message")
+                # ,Sensor("s-OutMode", 22, 34, "", "state_OutputMode")
+                # ,Sensor("s-OpMode", 22, 34, "", "state_OperatingMode")
             )
         )
-
 
     def __len__(self):
         """Length."""
@@ -142,30 +145,34 @@ class Sunways(object):
         """Returns necessary sensors from Sunways inverter"""
 
         try:
+            loop = asyncio.get_event_loop()
+            future1 = loop.run_in_executor(None, requests.get, 'http://www.google.com')
+            response1 = await future1
             timeout = aiohttp.ClientTimeout(total=5)
             async with aiohttp.ClientSession(timeout=timeout,
                                              raise_for_status=True) as session:
-                auth = aiohttp.auth.DigestAuth(self.username,self.password,session)
-                #https://github.com/aio-libs/aiohttp/pull/2213
-                #https://https://github.com/aio-libs/aiohttp/pull/2213/files/26a6064e3e742b84e64a51cd9df3f03cca5466aa
-                #riga 1481
-                
+                auth = aiohttp.auth.DigestAuth(self.username, self.password, session)
+                # https://github.com/aio-libs/aiohttp/pull/2213
+                # https://https://github.com/aio-libs/aiohttp/pull/2213/files/26a6064e3e742b84e64a51cd9df3f03cca5466aa
+                # riga 1481
+
                 current_url = self.url
                 async with auth.get(current_url) as response:
                     data = await response.text()
 
-                    #data="0.04 kW#0.2#226.3#0.1#350.3#---#---#10.42#138.2#2010.7#16147.1#4#0#0#0#"
-                    #if len(data.split(#)) > 15 :
-                    power, netCurrent, netVoltage, genCurrent, genVoltage,Temperature,irradiation,dayEnergy,monthEnergy,yearEnergy,totalEnergy,val1,val2,val3,val4,val5= data.split('#')
+                    # data="0.04 kW#0.2#226.3#0.1#350.3#---#---#10.42#138.2#2010.7#16147.1#4#0#0#0#"
+                    # if len(data.split(#)) > 15 :
+                    power, netCurrent, netVoltage, genCurrent, genVoltage, Temperature, irradiation, dayEnergy, monthEnergy, yearEnergy, totalEnergy, val1, val2, val3, val4, val5 = data.split(
+                        '#')
 
-                   # csv_data = StringIO(data)
-                    #reader = csv.reader(csv_data)
-                    #ncol = len(next(reader))
-                    #csv_data.seek(0)
+                    # csv_data = StringIO(data)
+                    # reader = csv.reader(csv_data)
+                    # ncol = len(next(reader))
+                    # csv_data.seek(0)
 
-                    #values = []
+                    # values = []
 
-                    #for row in reader:
+                    # for row in reader:
                     #    for (i, v) in enumerate(row):
                     #        values.append(v)
 
@@ -177,45 +184,44 @@ class Sunways(object):
                         if sen.name == "grid_current":
                             sen.value = eval(
                                 "{0}{1}".format(netCurrent, sen.factor)
-                            )      
+                            )
                         if sen.name == "generator_current":
                             sen.value = eval(
                                 "{0}{1}".format(genCurrent, sen.factor)
-                            )      
+                            )
                         if sen.name == "grid_voltage":
                             sen.value = eval(
                                 "{0}{1}".format(netVoltage, sen.factor)
-                            )      
+                            )
                         if sen.name == "generator_voltage":
                             sen.value = eval(
                                 "{0}{1}".format(genVoltage, sen.factor)
-                            )      
+                            )
                         if sen.name == "temperature":
                             sen.value = eval(
                                 "{0}{1}".format(Temperature, sen.factor)
-                            )      
+                            )
                         if sen.name == "today_yield":
                             sen.value = eval(
                                 "{0}{1}".format(dayEnergy, sen.factor)
-                            )      
+                            )
                         if sen.name == "month_yield":
                             sen.value = eval(
                                 "{0}{1}".format(monthEnergy, sen.factor)
-                            )      
+                            )
                         if sen.name == "year_yield":
                             sen.value = eval(
                                 "{0}{1}".format(yearEnergy, sen.factor)
-                            )      
+                            )
                         if sen.name == "total_yield":
                             sen.value = eval(
                                 "{0}{1}".format(totalEnergy, sen.factor)
-                            )      
-                            
+                            )
+
                         if sen.name == "state":
                             sen.value = MAPPER_STATES[v]
-               
+
                         sen.date = date.today()
-                   
 
                     _LOGGER.debug("Got new value for sensor %s: %s",
                                   sen.name, sen.value)
@@ -250,18 +256,32 @@ class Sunways(object):
                     "Sunways sensor name {0} at CSV position {1} not found, " +
                     "inverter not compatible?",
                     sen.name,
-                    sen.csv_1_key if ncol < 24 else sen.csv_2_key
+                    sen.csv_1_key
                 )
             )
 
 
 class UnauthorizedException(Exception):
     """Exception for Unauthorized 401 status code"""
+
     def __init__(self, message):
         Exception.__init__(self, message)
 
 
 class UnexpectedResponseException(Exception):
     """Exception for unexpected status code"""
+
     def __init__(self, message):
         Exception.__init__(self, message)
+
+
+def main():
+    sen = Sensors()
+    sw = Sunways("192.168.30.50")
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(sw.read(sen))
+
+
+
+if __name__ == "__main__":
+    main()
