@@ -6,7 +6,8 @@ import csv
 from io import StringIO
 from datetime import date
 import logging
-import requests
+import requests_async as requests
+from requests.auth import HTTPDigestAuth
 import xml.etree.ElementTree as ET
 
 from pip._vendor import requests
@@ -145,25 +146,19 @@ class Sunways(object):
         """Returns necessary sensors from Sunways inverter"""
 
         try:
-            loop = asyncio.get_event_loop()
-            future1 = loop.run_in_executor(None, requests.get, 'http://www.google.com')
-            response1 = await future1
-            timeout = aiohttp.ClientTimeout(total=5)
-            async with aiohttp.ClientSession(timeout=timeout,
-                                             raise_for_status=True) as session:
-                auth = aiohttp.auth.DigestAuth(self.username, self.password, session)
-                # https://github.com/aio-libs/aiohttp/pull/2213
-                # https://https://github.com/aio-libs/aiohttp/pull/2213/files/26a6064e3e742b84e64a51cd9df3f03cca5466aa
-                # riga 1481
 
+            async with requests.Session() as session:
                 current_url = self.url
-                async with auth.get(current_url) as response:
+                async with session.get(current_url,
+                                       auth=HTTPDigestAuth(self.username, self.password), timeout=5) as response:
                     data = await response.text()
 
                     # data="0.04 kW#0.2#226.3#0.1#350.3#---#---#10.42#138.2#2010.7#16147.1#4#0#0#0#"
                     # if len(data.split(#)) > 15 :
-                    power, netCurrent, netVoltage, genCurrent, genVoltage, Temperature, irradiation, dayEnergy, monthEnergy, yearEnergy, totalEnergy, val1, val2, val3, val4, val5 = data.split(
-                        '#')
+                    power, netCurrent, netVoltage, genCurrent, \
+                    genVoltage, Temperature, irradiation, dayEnergy, \
+                    monthEnergy, yearEnergy, totalEnergy, val1, val2, \
+                    val3, val4, val5 = data.split('#')
 
                     # csv_data = StringIO(data)
                     # reader = csv.reader(csv_data)
@@ -280,7 +275,6 @@ def main():
     sw = Sunways("192.168.30.50")
     loop = asyncio.get_event_loop()
     loop.run_until_complete(sw.read(sen))
-
 
 
 if __name__ == "__main__":
