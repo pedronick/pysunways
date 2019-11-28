@@ -1,16 +1,15 @@
 """PySunways interacts as a library to communicate with Sunways inverters"""
-import aiohttp
+
 import asyncio
+import httpx
 import concurrent
-import csv
-from io import StringIO
 from datetime import date
 import logging
 import requests_async as requests
+from httpx import DigestAuth
 from requests.auth import HTTPDigestAuth
-import xml.etree.ElementTree as ET
 
-from pip._vendor import requests
+# from pip._vendor import requests
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -146,114 +145,111 @@ class Sunways(object):
         """Returns necessary sensors from Sunways inverter"""
 
         try:
+            print("ciao")
+            #async with requests.Session() as session:
 
-            async with requests.Session() as session:
-                current_url = self.url
-                async with session.get(current_url,
-                                       auth=HTTPDigestAuth(self.username, self.password), timeout=5) as response:
-                    data = await response.text()
+
+            current_url = self.url
+            data = await httpx.get(current_url,  auth = DigestAuth(username=self.username, password=self.password), timeout=2)
+            #    async with session.get(current_url, auth=HTTPDigestAuth(self.username, self.password), timeout=5) as response:
+                #async with session.get(current_url) as response:
+            #        data = await response.text()
 
                     # data="0.04 kW#0.2#226.3#0.1#350.3#---#---#10.42#138.2#2010.7#16147.1#4#0#0#0#"
                     # if len(data.split(#)) > 15 :
-                    power, netCurrent, netVoltage, genCurrent, \
-                    genVoltage, Temperature, irradiation, dayEnergy, \
-                    monthEnergy, yearEnergy, totalEnergy, val1, val2, \
-                    val3, val4, val5 = data.split('#')
+            power, netCurrent, netVoltage, genCurrent, \
+            genVoltage, Temperature, irradiation, dayEnergy, \
+            monthEnergy, yearEnergy, totalEnergy, val1, val2, \
+            val3, val4, val5 = data.split('#')
 
-                    # csv_data = StringIO(data)
-                    # reader = csv.reader(csv_data)
-                    # ncol = len(next(reader))
-                    # csv_data.seek(0)
-
-                    # values = []
-
-                    # for row in reader:
-                    #    for (i, v) in enumerate(row):
-                    #        values.append(v)
-
-                    for sen in sensors:
-                        if sen.name == "current_power":
-                            sen.value = eval(
-                                "{0}{1}".format(power[:-2], sen.factor)
-                            )
-                        if sen.name == "grid_current":
-                            sen.value = eval(
-                                "{0}{1}".format(netCurrent, sen.factor)
-                            )
+            for sen in sensors:
+                if sen.name == "current_power":
+                    sen.value = eval(
+                        "{0}{1}".format(power[:-2], sen.factor)
+                    )
+                else:
+                    if sen.name == "grid_current":
+                        sen.value = eval(
+                            "{0}{1}".format(netCurrent, sen.factor)
+                        )
+                    else:
                         if sen.name == "generator_current":
                             sen.value = eval(
                                 "{0}{1}".format(genCurrent, sen.factor)
                             )
-                        if sen.name == "grid_voltage":
-                            sen.value = eval(
-                                "{0}{1}".format(netVoltage, sen.factor)
-                            )
-                        if sen.name == "generator_voltage":
-                            sen.value = eval(
-                                "{0}{1}".format(genVoltage, sen.factor)
-                            )
-                        if sen.name == "temperature":
-                            sen.value = eval(
-                                "{0}{1}".format(Temperature, sen.factor)
-                            )
-                        if sen.name == "today_yield":
-                            sen.value = eval(
-                                "{0}{1}".format(dayEnergy, sen.factor)
-                            )
-                        if sen.name == "month_yield":
-                            sen.value = eval(
-                                "{0}{1}".format(monthEnergy, sen.factor)
-                            )
-                        if sen.name == "year_yield":
-                            sen.value = eval(
-                                "{0}{1}".format(yearEnergy, sen.factor)
-                            )
-                        if sen.name == "total_yield":
-                            sen.value = eval(
-                                "{0}{1}".format(totalEnergy, sen.factor)
-                            )
+                        else:
+                            if sen.name == "grid_voltage":
+                                sen.value = eval(
+                                    "{0}{1}".format(netVoltage, sen.factor)
+                                )
+                            else:
+                                if sen.name == "generator_voltage":
+                                    sen.value = eval(
+                                        "{0}{1}".format(genVoltage, sen.factor)
+                                    )
+                                else:
+                                    if sen.name == "temperature":
+                                        sen.value = eval(
+                                            "{0}{1}".format(Temperature, sen.factor)
+                                        )
+                                    else:
+                                        if sen.name == "today_yield":
+                                            sen.value = eval(
+                                                "{0}{1}".format(dayEnergy, sen.factor)
+                                            )
+                                        else:
+                                            if sen.name == "month_yield":
+                                                sen.value = eval(
+                                                    "{0}{1}".format(monthEnergy, sen.factor)
+                                                )
+                                            else:
+                                                if sen.name == "year_yield":
+                                                    sen.value = eval(
+                                                        "{0}{1}".format(yearEnergy, sen.factor)
+                                                    )
+                                                else:
+                                                    if sen.name == "total_yield":
+                                                        sen.value = eval(
+                                                            "{0}{1}".format(totalEnergy, sen.factor)
+                                                        )
+                                                # else:
+                                                #     raise KeyError
 
-                        if sen.name == "state":
-                            sen.value = MAPPER_STATES[v]
+                # if sen.name == "state":
+                #     sen.value = MAPPER_STATES[v]
 
-                        sen.date = date.today()
+                sen.date = date.today()
 
-                    _LOGGER.debug("Got new value for sensor %s: %s",
-                                  sen.name, sen.value)
-
-                    return True
-        except (aiohttp.client_exceptions.ClientConnectorError,
-                concurrent.futures._base.TimeoutError):
-            # Connection to inverter not possible.
-            # This can be "normal" - so warning instead of error - as Sunways
-            # inverters auto switch off after the sun
-            # has set.
-            _LOGGER.warning("Connection to Sunways inverter is not possible. " +
-                            "The inverter may be offline due to darkness. " +
-                            "Otherwise check host/ip address.")
+            _LOGGER.debug("Got new value for sensor %s: %s",
+                          sen.name, sen.value)
+            print("ciao")
+            return True
+        except ():
             return False
-        except aiohttp.client_exceptions.ClientResponseError as err:
-            # 401 Unauthorized: wrong username/password
-            if err.status == 401:
-                raise UnauthorizedException(err)
-            else:
-                raise UnexpectedResponseException(err)
-        except csv.Error:
-            # CSV is not valid
-            raise UnexpectedResponseException(
-                str.format("No valid CSV received from {0} at {1}", self.host,
-                           current_url)
-            )
-        except IndexError:
-            # CSV received does not have all the required elements
-            raise UnexpectedResponseException(
-                str.format(
-                    "Sunways sensor name {0} at CSV position {1} not found, " +
-                    "inverter not compatible?",
-                    sen.name,
-                    sen.csv_1_key
-                )
-            )
+
+
+#       except (requests.client_exceptions.ClientConnectorError,
+#               concurrent.futures._base.TimeoutError):
+# Connection to inverter not possible.
+# This can be "normal" - so warning instead of error - as Sunways
+# inverters auto switch off after the sun
+# has set.
+#           _LOGGER.warning("Connection to Sunways inverter is not possible. " +
+#                           "The inverter may be offline due to darkness. " +
+#                           "Otherwise check host/ip address.")
+#           return False
+#       except requests.client_exceptions.ClientResponseError as err:
+# 401 Unauthorized: wrong username/password
+#           if err.status == 401:
+#               raise UnauthorizedException(err)
+#           else:
+#               raise UnexpectedResponseException(err)
+#       except KeyError:
+# requested sensor not supported
+#           raise UnexpectedResponseException(
+#               str.format("Sunways sensor key {0} not found, inverter not " +
+#                          "compatible?", sen.key)
+#           )
 
 
 class UnauthorizedException(Exception):
@@ -270,12 +266,25 @@ class UnexpectedResponseException(Exception):
         Exception.__init__(self, message)
 
 
-def main():
+def handle_exception(loop, context): #loop context):
+    # context["message"] will always be there; but context["exception"] may not
+    msg = context.get("exception", context["message"])
+
+
+async def main():
     sen = Sensors()
     sw = Sunways("192.168.30.50")
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(sw.read(sen))
+    await sw.read(sen)
+    #loop = asyncio.get_event_loop()
+    #loop.set_exception_handler(handle_exception)
+    #loop.run_until_complete(sw.read(sen))
+    #loop.close()
+
 
 
 if __name__ == "__main__":
-    main()
+    loop = asyncio.get_event_loop()
+    loop.set_exception_handler(handle_exception)
+    #asyncio.run(main())#, debug=True)
+    loop.run_until_complete(main())
+
