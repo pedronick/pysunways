@@ -5,7 +5,7 @@ import httpx
 import concurrent
 from datetime import date
 import logging
-import requests_async as requests
+#import requests_async as requests
 from httpx import DigestAuth
 from requests.auth import HTTPDigestAuth
 
@@ -41,7 +41,7 @@ OPERATINGMODE_STATES = {
     "3": "Test active",
 }
 
-URL_PATH = "/data/inverter.txt"
+URL_PATH = "data/inverter.txt"
 
 
 class Sensor(object):
@@ -73,15 +73,15 @@ class Sensors(object):
                 , Sensor("c-generator", 11, 23, "", "generator_current", "A")
                 , Sensor("v-grid", 11, 23, "", "grid_voltage", "V")
                 , Sensor("v-generator", 11, 23, "", "generator_voltage", "V")
-                , Sensor("temp", 20, 32, "/10", "temperature", "°C")
+                #, Sensor("temp", 20, 32, "/10", "temperature", "°C")
 
-                # ,Sensor("e-today", 3, 3, "/100", "today_yield", "kWh", True)
-                # ,Sensor("e-Month", 3, 3, "/100", "month_yield", "kWh", True)
-                # ,Sensor("e-year", 3, 3, "/100", "year_yield", "kWh", True)
-                # ,Sensor("e-total", 1, 1, "/100", "total_yield", "kWh", False,True)
-                # ,Sensor("s-Message", 22, 34, "", "state_Message")
-                # ,Sensor("s-OutMode", 22, 34, "", "state_OutputMode")
-                # ,Sensor("s-OpMode", 22, 34, "", "state_OperatingMode")
+                 ,Sensor("e-today", 3, 3, "", "today_yield", "kWh", True)
+                 ,Sensor("e-Month", 3, 3, "", "month_yield", "kWh", True)
+                 ,Sensor("e-year", 3, 3, "", "year_yield", "kWh", True)
+                 ,Sensor("e-total", 1, 1, "", "total_yield", "kWh", False,True)
+                 ,Sensor("s-Message", 22, 34, "", "state_Message")
+                 ,Sensor("s-OutMode", 22, 34, "", "state_OutputMode")
+                 ,Sensor("s-OpMode", 22, 34, "", "state_OperatingMode")
             )
         )
 
@@ -150,106 +150,169 @@ class Sunways(object):
 
 
             current_url = self.url
-            data = await httpx.get(current_url,  auth = DigestAuth(username=self.username, password=self.password), timeout=2)
-            #    async with session.get(current_url, auth=HTTPDigestAuth(self.username, self.password), timeout=5) as response:
-                #async with session.get(current_url) as response:
-            #        data = await response.text()
+            print(current_url)
+            async with httpx.Client(auth = DigestAuth(username=self.username, password=self.password), timeout=2) as session:
+                data = await session.get(current_url)
+                #    async with session.get(current_url, auth=HTTPDigestAuth(self.username, self.password), timeout=5) as response:
+                    #async with session.get(current_url) as response:
+                #        data = await response.text()
 
-                    # data="0.04 kW#0.2#226.3#0.1#350.3#---#---#10.42#138.2#2010.7#16147.1#4#0#0#0#"
-                    # if len(data.split(#)) > 15 :
-            power, netCurrent, netVoltage, genCurrent, \
-            genVoltage, Temperature, irradiation, dayEnergy, \
-            monthEnergy, yearEnergy, totalEnergy, val1, val2, \
-            val3, val4, val5 = data.split('#')
+                        # data="0.04 kW#0.2#226.3#0.1#350.3#---#---#10.42#138.2#2010.7#16147.1#4#0#0#0#"
+                        # if len(data.split(#)) > 15 :
+                print(data.text)
+                power, netCurrent, netVoltage, genCurrent, \
+                genVoltage, Temperature, irradiation, dayEnergy, \
+                monthEnergy, yearEnergy, totalEnergy, stat, err, \
+                warning, type, val5 = data.text.split('#')
 
-            for sen in sensors:
-                if sen.name == "current_power":
-                    sen.value = eval(
-                        "{0}{1}".format(power[:-2], sen.factor)
-                    )
-                else:
-                    if sen.name == "grid_current":
+                for sen in sensors:
+                    if sen.name == "current_power":
                         sen.value = eval(
-                            "{0}{1}".format(netCurrent, sen.factor)
+                            "{0}{1}".format(power[:-2], sen.factor)
                         )
                     else:
-                        if sen.name == "generator_current":
+                        if sen.name == "grid_current":
                             sen.value = eval(
-                                "{0}{1}".format(genCurrent, sen.factor)
+                                "{0}{1}".format(netCurrent, sen.factor)
                             )
                         else:
-                            if sen.name == "grid_voltage":
+                            if sen.name == "generator_current":
                                 sen.value = eval(
-                                    "{0}{1}".format(netVoltage, sen.factor)
+                                    "{0}{1}".format(genCurrent, sen.factor)
                                 )
                             else:
-                                if sen.name == "generator_voltage":
+                                if sen.name == "grid_voltage":
                                     sen.value = eval(
-                                        "{0}{1}".format(genVoltage, sen.factor)
+                                        "{0}{1}".format(netVoltage, sen.factor)
                                     )
                                 else:
-                                    if sen.name == "temperature":
+                                    if sen.name == "generator_voltage":
                                         sen.value = eval(
-                                            "{0}{1}".format(Temperature, sen.factor)
+                                            "{0}{1}".format(genVoltage, sen.factor)
                                         )
                                     else:
-                                        if sen.name == "today_yield":
+                                        if sen.name == "temperature":
                                             sen.value = eval(
-                                                "{0}{1}".format(dayEnergy, sen.factor)
+                                                "{0}{1}".format(Temperature, sen.factor)
                                             )
                                         else:
-                                            if sen.name == "month_yield":
+                                            if sen.name == "irradiation":
                                                 sen.value = eval(
-                                                    "{0}{1}".format(monthEnergy, sen.factor)
+                                                    "{0}{1}".format(irradiation, sen.factor)
                                                 )
                                             else:
-                                                if sen.name == "year_yield":
+                                                if sen.name == "today_yield":
                                                     sen.value = eval(
-                                                        "{0}{1}".format(yearEnergy, sen.factor)
+                                                        "{0}{1}".format(dayEnergy, sen.factor)
                                                     )
                                                 else:
-                                                    if sen.name == "total_yield":
+                                                    if sen.name == "month_yield":
                                                         sen.value = eval(
-                                                            "{0}{1}".format(totalEnergy, sen.factor)
+                                                            "{0}{1}".format(monthEnergy, sen.factor)
                                                         )
-                                                # else:
-                                                #     raise KeyError
+                                                    else:
+                                                        if sen.name == "year_yield":
+                                                            sen.value = eval(
+                                                                "{0}{1}".format(yearEnergy, sen.factor)
+                                                            )
+                                                        else:
+                                                            if sen.name == "total_yield":
+                                                                sen.value = eval(
+                                                                    "{0}{1}".format(totalEnergy, sen.factor)
+                                                                )
+                                                            else:
+                                                                if sen.name == "state_Message":
+                                                                    sen.value = ""
+                                                                    if err == "1":
+                                                                        sen.value = "Error"
+                                                                        if warning == "1":
+                                                                            sen.value = sen.value + " | Warning"
+                                                                    else:
+                                                                        if warning == "1":
+                                                                            sen.value = "Warnig"
 
-                # if sen.name == "state":
-                #     sen.value = MAPPER_STATES[v]
+                                                                else:
+                                                                    if sen.name == "state_OutputMode":
+                                                                        sen.value = ""
+                                                                        if stat & 0x80:
+                                                                            sen.value = "MPPT"
+                                                                        if stat & 0x20:
+                                                                            if len(sen):
+                                                                                sen.value= sen.value + " | "
+                                                                            sen.value = sen.value + "DC Current limitation"
+                                                                        if stat & 0x400:
+                                                                            if len(sen):
+                                                                                sen.value= sen.value + " | "
+                                                                            sen.value = sen.value + "AC Current limitation"
+                                                                        if stat & 0x40:
+                                                                            if len(sen):
+                                                                                sen.value= sen.value + " | "
+                                                                            sen.value = sen.value + "AC Output limitation"
+                                                                        if stat & 0x200:
+                                                                            if len(sen):
+                                                                                sen.value= sen.value + " | "
+                                                                            sen.value = sen.value + "Temperature limitation"
 
-                sen.date = date.today()
+
+                                                                    else:
+                                                                        if sen.name == "state_OutputMode":
+                                                                            sen.value = ""
+                                                                            if stat & 0x10:
+                                                                                sen.value = "Start"
+                                                                            if stat & 0x4:
+                                                                                if len(sen):
+                                                                                    sen.value = sen.value + " | "
+                                                                                sen.value = sen.value + "Feed"
+                                                                            if stat & 0x8:
+                                                                                if len(sen):
+                                                                                    sen.value = sen.value + " | "
+                                                                                sen.value = sen.value + "Night"
+                                                                            if stat & 0x1000:
+                                                                                if len(sen):
+                                                                                    sen.value = sen.value + " | "
+                                                                                sen.value = sen.value + "Test active"
+
+
+
+                                                        # else:
+                                                        #     raise KeyError
+
+                    # if sen.name == "state":
+                    #     sen.value = MAPPER_STATES[v]
+
+                    sen.date = date.today()
 
             _LOGGER.debug("Got new value for sensor %s: %s",
                           sen.name, sen.value)
-            print("ciao")
+
             return True
-        except ():
-            return False
+        #except ():
+        #    return False
 
 
-#       except (requests.client_exceptions.ClientConnectorError,
-#               concurrent.futures._base.TimeoutError):
+      except httpx.exceptions.ConnectTimeout :
 # Connection to inverter not possible.
 # This can be "normal" - so warning instead of error - as Sunways
 # inverters auto switch off after the sun
 # has set.
-#           _LOGGER.warning("Connection to Sunways inverter is not possible. " +
-#                           "The inverter may be offline due to darkness. " +
-#                           "Otherwise check host/ip address.")
-#           return False
-#       except requests.client_exceptions.ClientResponseError as err:
+           _LOGGER.warning("Connection to Sunways inverter is not possible. " +
+                           "The inverter may be offline due to darkness. " +
+                           "Otherwise check host/ip address.")
+           return False
+
+       except httpx.exceptions.HTTPError as err:
 # 401 Unauthorized: wrong username/password
-#           if err.status == 401:
-#               raise UnauthorizedException(err)
-#           else:
-#               raise UnexpectedResponseException(err)
-#       except KeyError:
+           if err.status == 401:
+               raise UnauthorizedException(err)
+           else:
+               raise UnexpectedResponseException(err)
+
+       except KeyError:
 # requested sensor not supported
-#           raise UnexpectedResponseException(
-#               str.format("Sunways sensor key {0} not found, inverter not " +
-#                          "compatible?", sen.key)
-#           )
+           raise UnexpectedResponseException(
+               str.format("Sunways sensor key {0} not found, inverter not " +
+                          "compatible?", sen.key)
+           )
 
 
 class UnauthorizedException(Exception):
@@ -275,6 +338,9 @@ async def main():
     sen = Sensors()
     sw = Sunways("192.168.30.50")
     await sw.read(sen)
+    for sens in sen:
+        print(sens.name)
+        print(sens.value)
     #loop = asyncio.get_event_loop()
     #loop.set_exception_handler(handle_exception)
     #loop.run_until_complete(sw.read(sen))
