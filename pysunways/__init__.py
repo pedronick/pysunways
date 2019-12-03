@@ -271,14 +271,9 @@ class Sunways(object):
                                                                                 if len(sen):
                                                                                     sen.value = sen.value + " | "
                                                                                 sen.value = sen.value + "Test active"
+                                                                        else:
+                                                                            raise KeyError
 
-
-
-                                                        # else:
-                                                        #     raise KeyError
-
-                    # if sen.name == "state":
-                    #     sen.value = MAPPER_STATES[v]
 
                     sen.date = date.today()
 
@@ -286,29 +281,26 @@ class Sunways(object):
                           sen.name, sen.value)
 
             return True
-        #except ():
-        #    return False
 
-
-      except httpx.exceptions.ConnectTimeout :
-# Connection to inverter not possible.
-# This can be "normal" - so warning instead of error - as Sunways
-# inverters auto switch off after the sun
-# has set.
-           _LOGGER.warning("Connection to Sunways inverter is not possible. " +
+        except httpx.exceptions.ConnectTimeout :
+            # Connection to inverter not possible.
+            # This can be "normal" - so warning instead of error - as Sunways
+            # inverters auto switch off after the sun
+            # has set.
+            _LOGGER.warning("Connection to Sunways inverter is not possible. " +
                            "The inverter may be offline due to darkness. " +
                            "Otherwise check host/ip address.")
-           return False
+            return False
 
-       except httpx.exceptions.HTTPError as err:
-# 401 Unauthorized: wrong username/password
+        except httpx.exceptions.HTTPError as err:
+            # 401 Unauthorized: wrong username/password
            if err.status == 401:
                raise UnauthorizedException(err)
            else:
                raise UnexpectedResponseException(err)
 
-       except KeyError:
-# requested sensor not supported
+        except KeyError:
+            # requested sensor not supported
            raise UnexpectedResponseException(
                str.format("Sunways sensor key {0} not found, inverter not " +
                           "compatible?", sen.key)
