@@ -1,0 +1,13 @@
+  
+{
+  "domain": "sunways",
+  "name": "SUNWAYS",
+  "documentation": "",
+  "requirements": [
+    "pysuways==0.0.14"
+  ],
+  "dependencies": [],
+  "codeowners": [
+    "@pedronick"
+  ]
+}
